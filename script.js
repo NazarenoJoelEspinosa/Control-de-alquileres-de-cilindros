@@ -1,6 +1,7 @@
-// ⚙️ CONFIGURACIÓN — reemplazá estos dos valores por los tuyos (ver README del backend)
-const API_URL = "https://TU-DOMINIO.up.railway.app/api/data";
-const API_KEY = "TU-CLAVE-SECRETA";
+// ⚙️ CONFIGURACIÓN — reemplazá estos dos valores por los tuyos (ver guía de Supabase)
+const SUPABASE_URL = "https://jjrmgyfvrkwoylyizwkq.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_Oc_gERFdbzjN9P6Ks36Jug_IRbOwkjc";
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const GASES = ["Argón","Acetileno","Oxígeno","Mix 20 (Atal)","Mix 310 (Noxal)","Gas Carbónico","Nitrógeno"];
 
@@ -11,17 +12,16 @@ let filtroActivo = "todos";
 async function cargarDatos(){
   document.getElementById("last-updated").textContent = "Cargando datos...";
   try{
-    const res = await fetch(API_URL, { headers: { "x-api-key": API_KEY } });
-    if(!res.ok) throw new Error("HTTP "+res.status);
-    const json = await res.json();
-    clientes = json.clientes || [];
+    const { data, error } = await supabaseClient.from("app_data").select("data").eq("id",1).single();
+    if(error) throw error;
+    clientes = (data && data.data && data.data.clientes) || [];
     // Migración: ya no se usa el estado intermedio "Factura enviada"
     clientes.forEach(c=>{ if(c.estado==="Factura enviada") c.estado="Pendiente"; });
     document.getElementById("last-updated").textContent = "Datos cargados";
   }catch(e){
     console.error(e);
     document.getElementById("last-updated").textContent = "⚠ No se pudo conectar a la base de datos";
-    alert("No se pudo conectar con la base de datos.\n\nRevisá en script.js que API_URL y API_KEY sean correctos, y que el servicio esté activo en Railway.");
+    alert("No se pudo conectar con Supabase.\n\nRevisá en script.js que SUPABASE_URL y SUPABASE_ANON_KEY sean correctos, y que la tabla app_data exista.");
   }
   render();
 }
@@ -29,12 +29,11 @@ async function cargarDatos(){
 const save = async () => {
   document.getElementById("last-updated").textContent = "Guardando...";
   try{
-    const res = await fetch(API_URL, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json", "x-api-key": API_KEY },
-      body: JSON.stringify({ clientes })
-    });
-    if(!res.ok) throw new Error("HTTP "+res.status);
+    const { error } = await supabaseClient
+      .from("app_data")
+      .update({ data: { clientes }, updated_at: new Date().toISOString() })
+      .eq("id",1);
+    if(error) throw error;
     const now = new Date();
     document.getElementById("last-updated").textContent =
       "Guardado " + now.toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"});
