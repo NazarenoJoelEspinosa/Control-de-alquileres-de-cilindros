@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Control Operativo Cilindros</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+</head>
+
+<body>
+
+  <div class="header">
+    <div class="header-left">
+      <h1>🔧 Control Operativo Cilindros</h1>
+      <p id="last-updated">Listo</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn" onclick="openAyuda()">❓ Ayuda</button>
+      <button class="btn" onclick="openReportes()">📊 Reportes</button>
+      <button class="btn" onclick="exportExcel()">📥 Exportar Excel</button>
+      <button class="btn btn-primary" onclick="openAddModal()">+ Nuevo cliente</button>
+    </div>
+  </div>
+
+  <div class="summary">
+    <div class="stat active" onclick="setFilter('todos')" id="stat-todos">
+      <div class="stat-num" id="cnt-todos">0</div>
+      <div class="stat-label">Total</div>
+    </div>
+    <div class="stat" onclick="setFilter('Pendiente')" id="stat-pendiente">
+      <div class="stat-num" id="cnt-pendiente">0</div>
+      <div class="stat-label">Pendientes</div>
+    </div>
+    <div class="stat" onclick="setFilter('Pagado')" id="stat-pagado">
+      <div class="stat-num" id="cnt-pagado">0</div>
+      <div class="stat-label">Pagados</div>
+    </div>
+    <div class="stat" onclick="setFilter('urgente')" id="stat-urgente">
+      <div class="stat-num" id="cnt-urgente">0</div>
+      <div class="stat-label">+3 meses deuda</div>
+    </div>
+    <div class="stat" onclick="setFilter('porvencer')" id="stat-porvencer">
+      <div class="stat-num" id="cnt-porvencer">0</div>
+      <div class="stat-label">Por vencer pronto</div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input type="search" id="search" placeholder="Buscar cliente..." oninput="render()">
+    </div>
+    <select id="sort-select" onchange="render()">
+      <option value="nombre">A – Z</option>
+      <option value="meses">Más deuda primero</option>
+      <option value="estado">Por estado</option>
+    </select>
+  </div>
+
+  <div class="filter-row">
+    <div class="filter-group">
+      <span class="flabel">Pago desde</span>
+      <input type="month" id="filtro-desde" onchange="render()">
+    </div>
+    <div class="filter-group">
+      <span class="flabel">Pago hasta</span>
+      <input type="month" id="filtro-hasta" onchange="render()">
+    </div>
+    <div class="filter-group">
+      <span class="flabel">Tipo de gas</span>
+      <select id="filtro-gas" onchange="render()">
+        <option value="">Todos los gases</option>
+      </select>
+    </div>
+
+    <div class="filter-group">
+      <span class="flabel">&nbsp;</span>
+      <button class="btn btn-sm btn-ghost" onclick="limpiarFiltros()">✕ Limpiar filtros</button>
+    </div>
+  </div>
+
+  <div class="list-wrap">
+    <div id="panel" class="list"></div>
+  </div>
+
+  <!-- MODAL DETALLE -->
+  <div class="overlay" id="overlay-detalle">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title" id="m-name"></div>
+          <div class="modal-subtitle" id="m-subtitle"></div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="closeDetalle()">✕ Cerrar</button>
+      </div>
+      <div class="modal-body">
+
+        <div class="urgent-banner" id="m-alert" style="display:none">
+          ⚠️ <span id="m-alert-text"></span>
+        </div>
+
+        <div class="info-grid">
+          <div class="info-cell">
+            <div class="info-label">Estado</div>
+            <div class="info-value" id="m-status"></div>
+          </div>
+          <div class="info-cell">
+            <div class="info-label">Pago hasta</div>
+            <div class="info-value" id="m-pay"></div>
+          </div>
+          <div class="info-cell">
+            <div class="info-label">Meses sin pagar</div>
+            <div class="info-value" id="m-months"></div>
+          </div>
+          <div class="info-cell">
+            <div class="info-label">Tubos baja rotación</div>
+            <div class="info-value" id="m-rot"></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="section-title">✏️ Editar datos</div>
+          <div class="edit-row">
+            <input type="text" id="edit-nombre" placeholder="Nombre">
+            <input type="month" id="edit-pago">
+          </div>
+          <div class="edit-row">
+            <select id="edit-estado">
+              <option>Pendiente</option>
+              <option>Pagado</option>
+            </select>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+            <button class="btn btn-sm btn-success" onclick="saveEdit()">💾 Guardar cambios</button>
+            <button class="btn btn-sm" onclick="marcarPagadoHoy()">✔ Pago hoy</button>
+          </div>
+        </div>
+
+        <div>
+          <div class="section-title">📝 Notas</div>
+          <textarea id="edit-notas" placeholder="Anotaciones sobre este cliente..." style="margin-top:8px"
+            oninput="saveNotas()"></textarea>
+        </div>
+
+        <div>
+          <div class="section-title">📋 Historial de pagos</div>
+          <div class="hist-list" id="m-hist"></div>
+          <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+            <input type="month" id="hist-mes" style="flex:1;min-width:120px">
+            <input type="text" id="hist-nota" placeholder="Nota (ej: pago parcial)" style="flex:2;min-width:130px">
+            <button class="btn btn-sm" onclick="addHistorial()">+ Agregar</button>
+          </div>
+        </div>
+
+        <div>
+          <div class="section-title">⬡ Cilindros de gas</div>
+          <div class="cyl-list" id="m-cyl"></div>
+          <div class="add-row">
+            <select id="cyl-gas">
+              <option value="Argón">Argón</option>
+              <option value="Acetileno">Acetileno</option>
+              <option value="Oxígeno">Oxígeno</option>
+              <option value="Mix 20 (Atal)">Mix 20 (Atal)</option>
+              <option value="Mix 310 (Noxal)">Mix 310 (Noxal)</option>
+              <option value="Gas Carbónico">Gas Carbónico</option>
+              <option value="Nitrógeno">Nitrógeno</option>
+            </select>
+            <input type="number" id="cyl-qty" placeholder="Cantidad" min="1">
+            <input type="number" id="cyl-bajarot" placeholder="De baja rot." min="0">
+            <button class="btn btn-sm" onclick="addCylinder()">+ Agregar</button>
+          </div>
+          <button class="btn btn-sm" onclick="addCylinder()">+ Agregar</button>
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-sm" onclick="closeDetalle()">Cerrar</button>
+      <button class="btn btn-sm btn-danger" onclick="confirmDelete()">🗑 Eliminar cliente</button>
+    </div>
+  </div>
+  </div>
+
+  <!-- MODAL AGREGAR -->
+  <div class="overlay" id="overlay-add">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">Nuevo cliente</div>
+          <div class="modal-subtitle">Completá los pasos. Solo el nombre es obligatorio — el resto lo podés dejar para
+            después.</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="closeAdd()">✕</button>
+      </div>
+      <div class="modal-body">
+
+        <div>
+          <div class="section-title">1️⃣ Datos del cliente</div>
+          <div class="edit-row">
+            <input type="text" id="add-nombre" placeholder="Nombre o razón social *">
+          </div>
+          <div class="edit-row">
+            <textarea id="add-notas" placeholder="Notas (opcional): dirección, contacto, referencias..."></textarea>
+          </div>
+        </div>
+
+        <div>
+          <div class="section-title">2️⃣ Estado de pago</div>
+          <div class="edit-row">
+            <select id="add-estado">
+              <option value="Pendiente">Pendiente de pago</option>
+              <option value="Pagado">Ya pagó</option>
+            </select>
+            <input type="month" id="add-pago" title="Mes hasta el que tiene pagado">
+          </div>
+        </div>
+
+        <div>
+          <div class="section-title">3️⃣ Cilindros que tiene ahora (opcional)</div>
+          <div class="cyl-list" id="add-cyl-list"></div>
+          <div class="add-row">
+            <select id="add-cyl-gas">
+              <option value="Argón">Argón</option>
+              <option value="Acetileno">Acetileno</option>
+              <option value="Oxígeno">Oxígeno</option>
+              <option value="Mix 20 (Atal)">Mix 20 (Atal)</option>
+              <option value="Mix 310 (Noxal)">Mix 310 (Noxal)</option>
+              <option value="Gas Carbónico">Gas Carbónico</option>
+              <option value="Nitrógeno">Nitrógeno</option>
+            </select>
+            <input type="number" id="add-cyl-qty" placeholder="Cantidad" min="1">
+            <input type="number" id="add-cyl-bajarot" placeholder="De baja rot." min="0">
+            <button class="btn btn-sm" onclick="addTempCylinder()">+ Agregar</button>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-sm" onclick="closeAdd()">Cancelar</button>
+        <button class="btn btn-sm btn-primary" onclick="addClient()">✔ Guardar cliente</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONFIRM -->
+  <div class="confirm-box" id="confirm-box">
+    <div class="confirm-card">
+      <h3 id="confirm-title">¿Confirmar?</h3>
+      <p id="confirm-msg"></p>
+      <div class="confirm-btns">
+        <button class="btn" onclick="closeConfirm()">Cancelar</button>
+        <button class="btn btn-danger" id="confirm-ok">Eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL REPORTES -->
+  <div class="overlay" id="overlay-reportes">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">📊 Reporte mensual</div>
+        <button class="btn btn-ghost btn-sm" onclick="closeReportes()">✕ Cerrar</button>
+      </div>
+      <div class="modal-body">
+        <div id="rep-summary" class="report-summary"></div>
+        <div>
+          <div class="section-title">⬡ Cilindros por tipo de gas</div>
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th>Gas</th>
+                <th>Total</th>
+                <th>Baja rotación</th>
+                <th>Clientes</th>
+              </tr>
+            </thead>
+            <tbody id="rep-gas-body"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-sm btn-primary" onclick="exportExcel()">📥 Exportar Excel</button>
+        <button class="btn btn-sm" onclick="closeReportes()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL AYUDA -->
+  <div class="overlay" id="overlay-ayuda">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">❓ Cómo funciona el sistema</div>
+        <button class="btn btn-ghost btn-sm" onclick="closeAyuda()">✕ Cerrar</button>
+      </div>
+      <div class="modal-body">
+        <div class="help-block">
+          <h4>Colores del estado de cuenta</h4>
+          <div class="legend-row"><span class="legend-dot" style="background:var(--yellow)"></span> Pendiente de pago
+          </div>
+          <div class="legend-row"><span class="legend-dot" style="background:var(--green)"></span> Pagado</div>
+          <div class="legend-row"><span class="legend-dot" style="background:var(--red)"></span> Urgente: 3 meses o más
+            sin pagar</div>
+        </div>
+        <div class="help-block">
+          <h4>Tarjetas de resumen (arriba de todo)</h4>
+          <p>Tocá cualquiera para filtrar la lista al instante: <b>Total</b>, <b>Pendientes</b>, <b>Pagados</b>, <b>+3
+              meses deuda</b> (urgentes) y <b>Por vencer pronto</b> (clientes con 0 a 2 meses de atraso, para
+            adelantarte antes de que se vuelvan urgentes).</p>
+        </div>
+        <div class="help-block">
+          <h4>Filtros</h4>
+          <ul>
+            <li><b>Buscar cliente</b>: filtra por nombre.</li>
+            <li><b>Pago desde / hasta</b>: muestra solo clientes cuyo último pago registrado cae en ese rango de meses.
+            </li>
+            <li><b>Tipo de gas / Ubicación</b>: muestra solo clientes que tienen cilindros de ese gas o en esa ubicación
+              (calle o depósito).</li>
+            <li>Usá "✕ Limpiar filtros" para volver a ver todo.</li>
+          </ul>
+        </div>
+        <div class="help-block">
+          <h4>Agregar un cliente nuevo</h4>
+          <p>El único dato obligatorio es el nombre. El formulario está dividido en pasos: datos básicos, estado de
+            pago, y cilindros que ya tiene (si los conocés). Podés dejar cualquier paso vacío y completarlo después
+            desde la ficha del cliente.</p>
+        </div>
+        <div class="help-block">
+          <h4>Dentro de cada cliente</h4>
+          <ul>
+            <li><b>Editar datos</b>: nombre, mes de pago, estado y tubos de baja rotación.</li>
+            <li><b>Pago hoy</b>: marca el pago del mes actual con un solo clic.</li>
+            <li><b>Historial</b>: registro de todos los pagos anotados.</li>
+            <li><b>Cilindros de gas</b>: qué tipos de gas tiene ese cliente, cuántos, y si están en la calle o en el
+              depósito.</li>
+          </ul>
+        </div>
+        <div class="help-block">
+          <h4>Reportes y Excel</h4>
+          <p>"📊 Reportes" te muestra un resumen general: cuántos clientes están en mora, cuántos meses de atraso
+            acumulados hay, y cuántos cilindros de cada gas tenés en total (y dónde están). "📥 Exportar Excel" descarga
+            un archivo con tres hojas: Clientes, Cilindros detalle y Reporte por gas.</p>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-sm" onclick="closeAyuda()">Entendido</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+
+</html>
