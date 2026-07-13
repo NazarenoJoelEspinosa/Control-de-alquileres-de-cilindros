@@ -12,6 +12,23 @@
 
 <body>
 
+  <!-- LOGIN -->
+  <div class="login-screen" id="login-screen">
+    <div class="login-card">
+      <h1>🔧 Control Operativo Cilindros</h1>
+      <p class="login-subtitle">Iniciá sesión para acceder</p>
+      <div class="login-form">
+        <input type="email" id="login-email" placeholder="Email" autocomplete="username">
+        <input type="password" id="login-password" placeholder="Contraseña" autocomplete="current-password">
+        <button class="btn btn-primary" id="login-btn" onclick="login()">Iniciar sesión</button>
+        <p class="login-error" id="login-error" style="display:none"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- APP -->
+  <div id="app" style="display:none">
+
   <div class="header">
     <div class="header-left">
       <h1>🔧 Control Operativo Cilindros</h1>
@@ -22,6 +39,7 @@
       <button class="btn" onclick="openReportes()">📊 Reportes</button>
       <button class="btn" onclick="exportExcel()">📥 Exportar Excel</button>
       <button class="btn btn-primary" onclick="openAddModal()">+ Nuevo cliente</button>
+      <button class="btn btn-ghost" onclick="logout()" title="Cerrar sesión">🚪 Salir</button>
     </div>
   </div>
 
@@ -172,7 +190,6 @@
             <input type="number" id="cyl-bajarot" placeholder="De baja rot." min="0">
             <button class="btn btn-sm" onclick="addCylinder()">+ Agregar</button>
           </div>
-          <button class="btn btn-sm" onclick="addCylinder()">+ Agregar</button>
         </div>
       </div>
 
@@ -181,7 +198,6 @@
       <button class="btn btn-sm" onclick="closeDetalle()">Cerrar</button>
       <button class="btn btn-sm btn-danger" onclick="confirmDelete()">🗑 Eliminar cliente</button>
     </div>
-  </div>
   </div>
 
   <!-- MODAL AGREGAR -->
@@ -316,8 +332,7 @@
             <li><b>Buscar cliente</b>: filtra por nombre.</li>
             <li><b>Pago desde / hasta</b>: muestra solo clientes cuyo último pago registrado cae en ese rango de meses.
             </li>
-            <li><b>Tipo de gas / Ubicación</b>: muestra solo clientes que tienen cilindros de ese gas o en esa ubicación
-              (calle o depósito).</li>
+            <li><b>Tipo de gas</b>: muestra solo clientes que tienen cilindros de ese gas.</li>
             <li>Usá "✕ Limpiar filtros" para volver a ver todo.</li>
           </ul>
         </div>
@@ -333,14 +348,14 @@
             <li><b>Editar datos</b>: nombre, mes de pago, estado y tubos de baja rotación.</li>
             <li><b>Pago hoy</b>: marca el pago del mes actual con un solo clic.</li>
             <li><b>Historial</b>: registro de todos los pagos anotados.</li>
-            <li><b>Cilindros de gas</b>: qué tipos de gas tiene ese cliente, cuántos, y si están en la calle o en el
-              depósito.</li>
+            <li><b>Cilindros de gas</b>: qué tipos de gas tiene ese cliente, cuántos en total y cuántos de "baja
+              rotación" (tubos que se mueven poco, para tenerlos identificados).</li>
           </ul>
         </div>
         <div class="help-block">
           <h4>Reportes y Excel</h4>
           <p>"📊 Reportes" te muestra un resumen general: cuántos clientes están en mora, cuántos meses de atraso
-            acumulados hay, y cuántos cilindros de cada gas tenés en total (y dónde están). "📥 Exportar Excel" descarga
+            acumulados hay, y cuántos cilindros de cada gas tenés en total. "📥 Exportar Excel" descarga
             un archivo con tres hojas: Clientes, Cilindros detalle y Reporte por gas.</p>
         </div>
       </div>
@@ -349,6 +364,8 @@
       </div>
     </div>
   </div>
+
+  </div><!-- /#app -->
 
   <script src="script.js"></script>
 </body>
