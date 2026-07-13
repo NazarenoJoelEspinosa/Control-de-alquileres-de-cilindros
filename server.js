@@ -1,17 +1,16 @@
 // server.js
-// API mínima para guardar y leer los datos del sistema de control de cilindros.
-// Guarda TODA la lista de clientes como un solo bloque JSON en Postgres,
-// igual a como se guardaba antes en localStorage — así el frontend casi no cambia.
+// API para guardar y leer los datos del sistema de control de cilindros.
+// Guarda TODA la lista de clientes como un solo bloque JSON en Postgres.
+// También sirve el frontend estático.
 
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
 const { Pool } = require("pg");
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 const API_KEY = process.env.API_KEY || "cambiame";
 
-// Railway inyecta DATABASE_URL automáticamente si agregás un plugin de Postgres
-// al mismo proyecto que este servicio.
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
@@ -35,10 +34,13 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: "5mb" }));
 
-// Chequeo de salud (Railway lo usa para saber si el servicio está vivo)
-app.get("/", (req, res) => res.send("Cilindros API OK"));
+// Serve static frontend files
+app.use(express.static(path.join(__dirname)));
 
-// Todas las rutas /api/* requieren la clave
+// Health check
+app.get("/health", (req, res) => res.send("Cilindros API OK"));
+
+// All /api/* routes require the key
 function requireApiKey(req, res, next) {
   const key = req.header("x-api-key");
   if (key !== API_KEY) {
@@ -59,7 +61,7 @@ app.get("/api/data", requireApiKey, async (req, res) => {
 
 app.put("/api/data", requireApiKey, async (req, res) => {
   try {
-    const data = req.body; // { clientes: [...] }
+    const data = req.body;
     await pool.query(
       `UPDATE app_data SET data = $1, updated_at = now() WHERE id = 1`,
       [data]
@@ -73,7 +75,9 @@ app.put("/api/data", requireApiKey, async (req, res) => {
 
 initDb()
   .then(() => {
-    app.listen(PORT, () => console.log(`Cilindros API escuchando en puerto ${PORT}`));
+    app.listen(PORT, "0.0.0.0", () =>
+      console.log(`Cilindros API escuchando en puerto ${PORT}`)
+    );
   })
   .catch(err => {
     console.error("No se pudo inicializar la base de datos:", err);

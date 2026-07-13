@@ -1,7 +1,6 @@
-// ⚙️ CONFIGURACIÓN — reemplazá estos dos valores por los tuyos (ver guía de Supabase)
-const SUPABASE_URL = "https://jjrmgyfvrkwoylyizwkq.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_Oc_gERFdbzjN9P6Ks36Jug_IRbOwkjc";
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// ⚙️ CONFIGURACIÓN — API local (backend propio)
+const API_KEY = "cilindros-local-key-2024";
+const API_BASE = "/api";
 
 const GASES = ["Argón","Acetileno","Oxígeno","Mix 20 (Atal)","Mix 310 (Noxal)","Gas Carbónico","Nitrógeno"];
 
@@ -12,16 +11,19 @@ let filtroActivo = "todos";
 async function cargarDatos(){
   document.getElementById("last-updated").textContent = "Cargando datos...";
   try{
-    const { data, error } = await supabaseClient.from("app_data").select("data").eq("id",1).single();
-    if(error) throw error;
-    clientes = (data && data.data && data.data.clientes) || [];
+    const res = await fetch(API_BASE + "/data", {
+      headers: { "x-api-key": API_KEY }
+    });
+    if(!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    clientes = (data && data.clientes) || [];
     // Migración: ya no se usa el estado intermedio "Factura enviada"
     clientes.forEach(c=>{ if(c.estado==="Factura enviada") c.estado="Pendiente"; });
     document.getElementById("last-updated").textContent = "Datos cargados";
   }catch(e){
     console.error(e);
     document.getElementById("last-updated").textContent = "⚠ No se pudo conectar a la base de datos";
-    alert("No se pudo conectar con Supabase.\n\nRevisá en script.js que SUPABASE_URL y SUPABASE_ANON_KEY sean correctos, y que la tabla app_data exista.");
+    alert("No se pudo conectar con el servidor.\n\nAsegurate de que el servidor esté corriendo.");
   }
   render();
 }
@@ -29,11 +31,15 @@ async function cargarDatos(){
 const save = async () => {
   document.getElementById("last-updated").textContent = "Guardando...";
   try{
-    const { error } = await supabaseClient
-      .from("app_data")
-      .update({ data: { clientes }, updated_at: new Date().toISOString() })
-      .eq("id",1);
-    if(error) throw error;
+    const res = await fetch(API_BASE + "/data", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": API_KEY
+      },
+      body: JSON.stringify({ clientes })
+    });
+    if(!res.ok) throw new Error("HTTP " + res.status);
     const now = new Date();
     document.getElementById("last-updated").textContent =
       "Guardado " + now.toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"});
