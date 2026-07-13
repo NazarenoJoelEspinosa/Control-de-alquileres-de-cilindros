@@ -9,6 +9,59 @@ let clientes = [];
 let selected = null;
 let filtroActivo = "todos";
 
+// ===== AUTENTICACIÓN =====
+async function login(){
+  const email = document.getElementById("login-email").value.trim();
+  const password = document.getElementById("login-password").value;
+  const errDiv = document.getElementById("login-error");
+  const btn = document.getElementById("login-btn");
+  errDiv.style.display = "none";
+  if(!email || !password){
+    errDiv.textContent = "Completá email y contraseña.";
+    errDiv.style.display = "block";
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = "Ingresando...";
+  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  btn.disabled = false;
+  btn.textContent = "Iniciar sesión";
+  if(error){
+    errDiv.textContent = "Email o contraseña incorrectos.";
+    errDiv.style.display = "block";
+    return;
+  }
+  showApp();
+}
+
+async function logout(){
+  await supabaseClient.auth.signOut();
+  document.getElementById("app").style.display = "none";
+  document.getElementById("login-screen").style.display = "flex";
+  document.getElementById("login-email").value = "";
+  document.getElementById("login-password").value = "";
+}
+
+function showApp(){
+  document.getElementById("login-screen").style.display = "none";
+  document.getElementById("app").style.display = "block";
+  cargarDatos();
+}
+
+// Permitir Enter para loguearse
+document.getElementById("login-password").addEventListener("keydown", e=>{
+  if(e.key==="Enter") login();
+});
+
+async function initAuth(){
+  const { data:{ session } } = await supabaseClient.auth.getSession();
+  if(session){
+    showApp();
+  } else {
+    document.getElementById("login-screen").style.display = "flex";
+  }
+}
+
 async function cargarDatos(){
   document.getElementById("last-updated").textContent = "Cargando datos...";
   try{
@@ -587,4 +640,4 @@ function render(){
 });
 
 // INIT
-cargarDatos();
+initAuth();
