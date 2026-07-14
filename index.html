@@ -35,11 +35,23 @@
       <p id="last-updated">Listo</p>
     </div>
     <div class="header-actions">
-      <button class="btn" onclick="openAyuda()">❓ Ayuda</button>
-      <button class="btn" onclick="openReportes()">📊 Reportes</button>
-      <button class="btn" onclick="exportExcel()">📥 Exportar Excel</button>
+      <button class="btn" onclick="openAyuda()">
+        <svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        Ayuda
+      </button>
+      <button class="btn" onclick="openReportes()">
+        <svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        Reportes
+      </button>
+      <button class="btn" onclick="exportExcel()">
+        <svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Exportar Excel
+      </button>
       <button class="btn btn-primary" onclick="openAddModal()">+ Nuevo cliente</button>
-      <button class="btn btn-ghost" onclick="logout()" title="Cerrar sesión">🚪 Salir</button>
+      <button class="btn btn-ghost" onclick="logout()" title="Cerrar sesión">
+        <svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Salir
+      </button>
     </div>
   </div>
 
@@ -66,19 +78,22 @@
     </div>
   </div>
 
-  <div class="toolbar">
-    <div class="search-wrap">
-      <span class="search-icon">🔍</span>
-      <input type="search" id="search" placeholder="Buscar cliente..." oninput="render()">
-    </div>
-    <select id="sort-select" onchange="render()">
-      <option value="nombre">A – Z</option>
-      <option value="meses">Más deuda primero</option>
-      <option value="estado">Por estado</option>
-    </select>
-  </div>
-
   <div class="filter-row">
+    <div class="filter-group filter-search">
+      <span class="flabel">Buscar cliente</span>
+      <div class="search-wrap">
+        <svg class="ico search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="search" id="search" placeholder="Nombre..." oninput="render()">
+      </div>
+    </div>
+    <div class="filter-group">
+      <span class="flabel">Ordenar</span>
+      <select id="sort-select" onchange="render()">
+        <option value="nombre">A – Z</option>
+        <option value="meses">Más deuda primero</option>
+        <option value="estado">Por estado</option>
+      </select>
+    </div>
     <div class="filter-group">
       <span class="flabel">Pago desde</span>
       <input type="month" id="filtro-desde" onchange="render()">
@@ -143,6 +158,7 @@
           <div class="section-title">✏️ Editar datos</div>
           <div class="edit-row">
             <input type="text" id="edit-nombre" placeholder="Nombre">
+            <input type="tel" id="edit-telefono" placeholder="Teléfono">
             <input type="month" id="edit-pago">
           </div>
           <div class="edit-row">
@@ -196,7 +212,28 @@
     </div>
     <div class="modal-actions">
       <button class="btn btn-sm" onclick="closeDetalle()">Cerrar</button>
-      <button class="btn btn-sm btn-danger" onclick="confirmDelete()">🗑 Eliminar cliente</button>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-sm" onclick="openRecordatorio()">💬 Recordatorio</button>
+        <button class="btn btn-sm btn-danger" onclick="confirmDelete()">🗑 Eliminar cliente</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL RECORDATORIO -->
+  <div class="overlay" id="overlay-recordatorio">
+    <div class="modal" style="max-width:420px">
+      <div class="modal-header">
+        <div class="modal-title">💬 Enviar recordatorio</div>
+        <button class="btn btn-ghost btn-sm" onclick="closeRecordatorio()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="section-title">Mensaje (podés editarlo antes de enviar)</div>
+        <textarea id="rec-mensaje" style="min-height:110px;margin-top:8px"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-sm" onclick="closeRecordatorio()">Cancelar</button>
+        <button class="btn btn-sm btn-success" onclick="enviarRecordatorio()">✔ Abrir en WhatsApp</button>
+      </div>
     </div>
   </div>
 
@@ -217,6 +254,7 @@
           <div class="section-title">1️⃣ Datos del cliente</div>
           <div class="edit-row">
             <input type="text" id="add-nombre" placeholder="Nombre o razón social *">
+            <input type="tel" id="add-telefono" placeholder="Teléfono (opcional, con código de área)">
           </div>
           <div class="edit-row">
             <textarea id="add-notas" placeholder="Notas (opcional): dirección, contacto, referencias..."></textarea>
@@ -313,18 +351,26 @@
       </div>
       <div class="modal-body">
         <div class="help-block">
-          <h4>Colores del estado de cuenta</h4>
-          <div class="legend-row"><span class="legend-dot" style="background:var(--yellow)"></span> Pendiente de pago
-          </div>
-          <div class="legend-row"><span class="legend-dot" style="background:var(--green)"></span> Pagado</div>
-          <div class="legend-row"><span class="legend-dot" style="background:var(--red)"></span> Urgente: 3 meses o más
-            sin pagar</div>
+          <h4>Cómo leer cada tarjeta</h4>
+          <div class="legend-row"><span class="legend-dot" style="background:var(--text3)"></span> Punto gris junto al
+            nombre: cliente marcado como "Pendiente" (dato administrativo, no implica atraso)</div>
+          <div class="legend-row"><span class="legend-dot" style="background:var(--green)"></span> Punto verde: cliente
+            marcado como "Pagado"</div>
+          <div class="legend-row"><span class="legend-dot" style="background:var(--orange)"></span> Borde y etiqueta
+            naranja: 1 a 2 meses de atraso real ("por vencer")</div>
+          <div class="legend-row"><span class="legend-dot" style="background:var(--red)"></span> Borde y etiqueta roja:
+            urgente, 3 meses o más de atraso real</div>
+          <p style="margin-top:4px">El color de la tarjeta siempre refleja el atraso, no el estado administrativo —
+            así de un vistazo sabés a quién prestarle atención primero.</p>
         </div>
         <div class="help-block">
           <h4>Tarjetas de resumen (arriba de todo)</h4>
           <p>Tocá cualquiera para filtrar la lista al instante: <b>Total</b>, <b>Pendientes</b>, <b>Pagados</b>, <b>+3
-              meses deuda</b> (urgentes) y <b>Por vencer pronto</b> (clientes con 0 a 2 meses de atraso, para
+              meses deuda</b> (urgentes) y <b>Por vencer pronto</b> (clientes con 1 a 2 meses de atraso real, para
             adelantarte antes de que se vuelvan urgentes).</p>
+          <p style="margin-top:6px">El sistema da <b>1 mes de gracia</b> automático: el primer mes recién vencido
+            todavía no se cuenta como atraso (es normal, puede que el cliente devuelva el tubo). Recién a partir del
+            segundo mes sin pagar empieza a figurar como "por vencer".</p>
         </div>
         <div class="help-block">
           <h4>Filtros</h4>
@@ -345,11 +391,13 @@
         <div class="help-block">
           <h4>Dentro de cada cliente</h4>
           <ul>
-            <li><b>Editar datos</b>: nombre, mes de pago, estado y tubos de baja rotación.</li>
+            <li><b>Editar datos</b>: nombre, teléfono, mes de pago, estado y tubos de baja rotación.</li>
             <li><b>Pago hoy</b>: marca el pago del mes actual con un solo clic.</li>
             <li><b>Historial</b>: registro de todos los pagos anotados.</li>
             <li><b>Cilindros de gas</b>: qué tipos de gas tiene ese cliente, cuántos en total y cuántos de "baja
               rotación" (tubos que se mueven poco, para tenerlos identificados).</li>
+            <li><b>💬 Recordatorio</b>: genera un mensaje automático (que podés editar antes de mandarlo) y lo abre
+              directo en WhatsApp con el teléfono cargado del cliente.</li>
           </ul>
         </div>
         <div class="help-block">
