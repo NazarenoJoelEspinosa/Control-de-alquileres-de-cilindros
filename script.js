@@ -5,6 +5,18 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const GASES = ["Argón","Acetileno","Oxígeno","Mix 20 (Atal)","Mix 310 (Noxal)","Gas Carbónico","Nitrógeno"];
 
+// ===== ÍCONOS (reemplazan emojis: tamaño y trazo consistentes en toda la app) =====
+const ICON_PATHS = {
+  alert: '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+  clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+  package: '<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>',
+  note: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>',
+  inbox: '<polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>'
+};
+function ic(name, size=14){
+  return `<svg class="ico" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON_PATHS[name]}</svg>`;
+}
+
 let clientes = [];
 let selected = null;
 let filtroActivo = "todos";
@@ -100,13 +112,13 @@ function mesesDesde(pagoHasta){
   if(!pagoHasta) return null;
   const [y,m] = pagoHasta.split("-").map(Number);
   const now = new Date();
-  return (now.getFullYear()-y)*12 + (now.getMonth()+1-m);
+  const meses = (now.getFullYear()-y)*12 + (now.getMonth()+1-m);
+  return meses - 1; // 1 mes de gracia: recién a los 2 meses reales sin pagar empieza a contar como atraso
 }
 
 function mesesTexto(d){
   if(d===null) return "-";
-  if(d<0) return "Al día";
-  if(d===0) return "Este mes";
+  if(d<=0) return "Al día";
   return d+(d===1?" mes":" meses");
 }
 
@@ -153,7 +165,7 @@ function openAddModal(){
 
 function closeAdd(){
   document.getElementById("overlay-add").style.display="none";
-  ["add-nombre","add-pago","add-notas","add-cyl-qty","add-cyl-bajarot"].forEach(id=>document.getElementById(id).value="");
+  ["add-nombre","add-telefono","add-pago","add-notas","add-cyl-qty","add-cyl-bajarot"].forEach(id=>document.getElementById(id).value="");
   document.getElementById("add-estado").value="Pendiente";
   nuevosCilindros = [];
 }
@@ -185,7 +197,7 @@ function renderNuevosCilindros(){
     <div class="cyl-row">
       <span style="flex:1">${g.gas}</span>
       <span style="width:50px;text-align:center">${g.cantidad} u.</span>
-      ${g.bajaRotacion>0?`<span class="pill pill-orange">📦 ${g.bajaRotacion} baja rot.</span>`:""}
+      ${g.bajaRotacion>0?`<span class="pill pill-gray">${ic("package")} ${g.bajaRotacion} baja rot.</span>`:""}
       <button class="btn btn-ghost btn-sm" onclick="removeTempCylinder(${i})">🗑</button>
     </div>
   `).join("");
@@ -194,11 +206,17 @@ function renderNuevosCilindros(){
 function addClient(){
   const n = document.getElementById("add-nombre").value.trim();
   if(!n){ alert("Falta el nombre del cliente — es el único dato obligatorio."); document.getElementById("add-nombre").focus(); return; }
+  const yaExiste = clientes.some(c=>c.nombre.trim().toLowerCase()===n.toLowerCase());
+  if(yaExiste && !confirm(`Ya existe un cliente llamado "${n}". ¿Querés agregarlo igual?`)){
+    document.getElementById("add-nombre").focus();
+    return;
+  }
   const pago = document.getElementById("add-pago").value;
   const estado = document.getElementById("add-estado").value;
   const c = {
     id: Date.now(),
     nombre: n,
+    telefono: document.getElementById("add-telefono").value.trim(),
     pagoHasta: pago,
     estado: estado,
     notas: document.getElementById("add-notas").value.trim(),
@@ -241,6 +259,7 @@ function openDetalle(i){
   }
 
   document.getElementById("edit-nombre").value = c.nombre;
+  document.getElementById("edit-telefono").value = c.telefono||"";
   document.getElementById("edit-pago").value = c.pagoHasta||"";
   document.getElementById("edit-estado").value = c.estado;
   document.getElementById("edit-notas").value = c.notas||"";
@@ -253,11 +272,51 @@ function closeDetalle(){
   document.getElementById("overlay-detalle").style.display="none";
 }
 
+// RECORDATORIO POR WHATSAPP
+function mensajePorDefecto(c){
+  const d = mesesDesde(c.pagoHasta);
+  if(d!==null && d>=1){
+    return `Hola ${c.nombre}! Te escribimos para recordarte que tenés un pago pendiente de ${d} ${d===1?"mes":"meses"} por el alquiler de cilindros. Cualquier consulta, quedamos a disposición. ¡Gracias!`;
+  }
+  return `Hola ${c.nombre}! Te escribimos por el alquiler de cilindros. Cualquier consulta, quedamos a disposición. ¡Gracias!`;
+}
+
+function openRecordatorio(){
+  const c = clientes[selected];
+  if(!c.telefono){
+    alert("Este cliente no tiene teléfono cargado. Agregalo en 'Editar datos' para poder enviarle un recordatorio.");
+    return;
+  }
+  document.getElementById("rec-mensaje").value = mensajePorDefecto(c);
+  document.getElementById("overlay-recordatorio").style.display="flex";
+}
+
+function closeRecordatorio(){
+  document.getElementById("overlay-recordatorio").style.display="none";
+}
+
+function enviarRecordatorio(){
+  const c = clientes[selected];
+  const texto = document.getElementById("rec-mensaje").value.trim();
+  if(!texto){ alert("El mensaje no puede estar vacío."); return; }
+  const telLimpio = c.telefono.replace(/[^\d]/g,"");
+  const url = `https://wa.me/${telLimpio}?text=${encodeURIComponent(texto)}`;
+  window.open(url,"_blank");
+  closeRecordatorio();
+}
+
 // EDITAR
 function saveEdit(){
   const c = clientes[selected];
   const prevPago = c.pagoHasta;
-  c.nombre = document.getElementById("edit-nombre").value.trim()||c.nombre;
+  const nuevoNombre = document.getElementById("edit-nombre").value.trim()||c.nombre;
+  const nombreCambio = nuevoNombre.toLowerCase()!==c.nombre.toLowerCase();
+  if(nombreCambio){
+    const yaExiste = clientes.some((o,i)=>i!==selected&&o.nombre.trim().toLowerCase()===nuevoNombre.toLowerCase());
+    if(yaExiste && !confirm(`Ya existe otro cliente llamado "${nuevoNombre}". ¿Guardar igual?`)) return;
+  }
+  c.nombre = nuevoNombre;
+  c.telefono = document.getElementById("edit-telefono").value.trim();
   c.pagoHasta = document.getElementById("edit-pago").value;
   c.estado = document.getElementById("edit-estado").value;
   if(c.estado==="Pagado"&&c.pagoHasta&&c.pagoHasta!==prevPago){
@@ -469,6 +528,7 @@ async function exportExcel(){
   const wsClientes = wb.addWorksheet("Clientes", { views:[{ state:"frozen", ySplit:1 }] });
   wsClientes.columns = [
     { header:"Nombre", key:"nombre", width:26 },
+    { header:"Teléfono", key:"telefono", width:16 },
     { header:"Estado", key:"estado", width:14 },
     { header:"Pago hasta", key:"pago", width:12 },
     { header:"Meses deuda", key:"meses", width:12 },
@@ -480,9 +540,10 @@ async function exportExcel(){
     const d = mesesDesde(c.pagoHasta);
     const row = wsClientes.addRow({
       nombre:c.nombre,
+      telefono:c.telefono||"",
       estado:c.estado,
       pago:c.pagoHasta||"",
-      meses: d===null?"-":d<0?"Al día":d,
+      meses: d===null?"-":d<=0?"Al día":d,
       total:totalTubos(c),
       rot:totalBajaRotacion(c),
       notas:c.notas||""
@@ -493,7 +554,7 @@ async function exportExcel(){
     else if(c.estado==="Pagado") fill="FFF0FDF4";
     if(fill) row.eachCell(cell=>{ cell.fill={type:"pattern",pattern:"solid",fgColor:{argb:fill}}; });
   });
-  styleHeader(wsClientes, "G");
+  styleHeader(wsClientes, "H");
 
   // ---- Hoja Cilindros ----
   const wsCilindros = wb.addWorksheet("Cilindros", { views:[{ state:"frozen", ySplit:1 }] });
@@ -557,7 +618,7 @@ function render(){
     else if(c.estado==="Pagado") pag++;
     const d=mesesDesde(c.pagoHasta);
     if(d!==null&&d>=3) urg++;
-    else if(d!==null&&d>=0&&d<=2) porVencer++;
+    else if(d!==null&&d>=1&&d<=2) porVencer++;
   });
   document.getElementById("cnt-todos").innerText=tot;
   document.getElementById("cnt-pendiente").innerText=pend;
@@ -571,7 +632,7 @@ function render(){
     if(filtroActivo==="urgente"){
       if(!(d!==null&&d>=3)) return false;
     } else if(filtroActivo==="porvencer"){
-      if(!(d!==null&&d>=0&&d<=2)) return false;
+      if(!(d!==null&&d>=1&&d<=2)) return false;
     } else if(filtroActivo!=="todos"&&c.estado!==filtroActivo){
       return false;
     }
@@ -598,7 +659,7 @@ function render(){
   if(!lista.length){
     panel.innerHTML=`
       <div class="empty-state">
-        <div class="empty-icon">📋</div>
+        <div class="empty-icon">${ic("inbox",32)}</div>
         <p>${q||filtroActivo!=="todos"?"No hay clientes que coincidan con ese filtro.":"Agregá tu primer cliente con el botón de arriba."}</p>
       </div>`;
     return;
@@ -607,21 +668,29 @@ function render(){
   panel.innerHTML=lista.map(({c,i})=>{
     const d=mesesDesde(c.pagoHasta);
     const urgente=d!==null&&d>=3;
-    const cls=urgente?"urgente":c.estado==="Pendiente"?"pendiente":"pagado";
-    const statPill=c.estado==="Pendiente"?"pill-yellow":"pill-green";
+    const porVencer=d!==null&&d>=1&&d<=2;
+    const cls=urgente?"urgente":porVencer?"porvencer":"neutro";
+    const dotCls=c.estado==="Pendiente"?"pendiente":"pagado";
     const tot=totalTubos(c);
     const rot=totalBajaRotacion(c);
+
+    let atrasoPill;
+    if(urgente) atrasoPill=`<span class="pill pill-solid-red">${ic("alert")} ${d} meses sin pagar</span>`;
+    else if(porVencer) atrasoPill=`<span class="pill pill-solid-orange">${ic("clock")} ${mesesTexto(d)}</span>`;
+    else atrasoPill=`<span class="pill pill-gray">${ic("clock")} ${mesesTexto(d)}</span>`;
 
     return `
       <div class="card ${cls}">
         <div style="flex:1;min-width:0">
-          <div class="card-name">${c.nombre}</div>
+          <div class="card-top">
+            <span class="card-name">${c.nombre}</span>
+            <span class="status-badge"><span class="status-dot ${dotCls}"></span>${c.estado}</span>
+          </div>
           <div class="card-pills">
-            <span class="pill ${statPill}">${c.estado}</span>
-            ${urgente?`<span class="pill pill-red">⚠️ ${d} meses sin pagar</span>`:(d!==null&&d>=0&&d<=2)?`<span class="pill pill-orange">🔜 ${mesesTexto(d)}</span>`:`<span class="pill pill-gray">📅 ${mesesTexto(d)}</span>`}
-            ${tot>0?`<span class="pill pill-gray">🛢️ ${tot} cilindros</span>`:""}
-            ${rot>0?`<span class="pill pill-orange">📦 ${rot} baja rot.</span>`:""}
-            ${c.notas?`<span class="pill pill-gray" title="${c.notas.substring(0,80)}">📝 nota</span>`:""}
+            ${atrasoPill}
+            ${tot>0?`<span class="pill pill-gray">${ic("package")} ${tot} cilindros</span>`:""}
+            ${rot>0?`<span class="pill pill-gray">${ic("package")} ${rot} baja rot.</span>`:""}
+            ${c.notas?`<span class="pill pill-gray" title="${c.notas.substring(0,80)}">${ic("note")} nota</span>`:""}
           </div>
         </div>
         <div class="card-right">
@@ -633,7 +702,7 @@ function render(){
 }
 
 // Cerrar con click fuera
-["overlay-detalle","overlay-add"].forEach(id=>{
+["overlay-detalle","overlay-add","overlay-recordatorio"].forEach(id=>{
   document.getElementById(id).addEventListener("click",function(e){
     if(e.target===this) this.style.display="none";
   });
