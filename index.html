@@ -95,6 +95,16 @@
       </select>
     </div>
     <div class="filter-group">
+      <span class="flabel">&nbsp;</span>
+      <button class="btn btn-sm btn-ghost" id="btn-mas-filtros" onclick="toggleFiltros()">
+        <svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+        Más filtros
+      </button>
+    </div>
+  </div>
+
+  <div class="filter-row filter-row-advanced" id="advanced-filters">
+    <div class="filter-group">
       <span class="flabel">Pago desde</span>
       <input type="month" id="filtro-desde" onchange="render()">
     </div>
@@ -115,106 +125,111 @@
     </div>
   </div>
 
-  <div class="list-wrap">
-    <div id="panel" class="list"></div>
-  </div>
-
-  <!-- MODAL DETALLE -->
-  <div class="overlay" id="overlay-detalle">
-    <div class="modal">
-      <div class="modal-header">
-        <div>
-          <div class="modal-title" id="m-name"></div>
-          <div class="modal-subtitle" id="m-subtitle"></div>
-        </div>
-        <button class="btn btn-ghost btn-sm" onclick="closeDetalle()">✕ Cerrar</button>
-      </div>
-      <div class="modal-body">
-
-        <div class="urgent-banner" id="m-alert" style="display:none">
-          ⚠️ <span id="m-alert-text"></span>
-        </div>
-
-        <div class="info-grid">
-          <div class="info-cell">
-            <div class="info-label">Estado</div>
-            <div class="info-value" id="m-status"></div>
-          </div>
-          <div class="info-cell">
-            <div class="info-label">Pago hasta</div>
-            <div class="info-value" id="m-pay"></div>
-          </div>
-          <div class="info-cell">
-            <div class="info-label">Meses sin pagar</div>
-            <div class="info-value" id="m-months"></div>
-          </div>
-          <div class="info-cell">
-            <div class="info-label">Tubos baja rotación</div>
-            <div class="info-value" id="m-rot"></div>
-          </div>
-        </div>
-
-        <div>
-          <div class="section-title">✏️ Editar datos</div>
-          <div class="edit-row">
-            <input type="text" id="edit-nombre" placeholder="Nombre">
-            <input type="tel" id="edit-telefono" placeholder="Teléfono">
-            <input type="month" id="edit-pago">
-          </div>
-          <div class="edit-row">
-            <select id="edit-estado">
-              <option>Pendiente</option>
-              <option>Pagado</option>
-            </select>
-          </div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
-            <button class="btn btn-sm btn-success" onclick="saveEdit()">💾 Guardar cambios</button>
-            <button class="btn btn-sm" onclick="marcarPagadoHoy()">✔ Pago hoy</button>
-          </div>
-        </div>
-
-        <div>
-          <div class="section-title">📝 Notas</div>
-          <textarea id="edit-notas" placeholder="Anotaciones sobre este cliente..." style="margin-top:8px"
-            oninput="saveNotas()"></textarea>
-        </div>
-
-        <div>
-          <div class="section-title">📋 Historial de pagos</div>
-          <div class="hist-list" id="m-hist"></div>
-          <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
-            <input type="month" id="hist-mes" style="flex:1;min-width:120px">
-            <input type="text" id="hist-nota" placeholder="Nota (ej: pago parcial)" style="flex:2;min-width:130px">
-            <button class="btn btn-sm" onclick="addHistorial()">+ Agregar</button>
-          </div>
-        </div>
-
-        <div>
-          <div class="section-title">⬡ Cilindros de gas</div>
-          <div class="cyl-list" id="m-cyl"></div>
-          <div class="add-row">
-            <select id="cyl-gas">
-              <option value="Argón">Argón</option>
-              <option value="Acetileno">Acetileno</option>
-              <option value="Oxígeno">Oxígeno</option>
-              <option value="Mix 20 (Atal)">Mix 20 (Atal)</option>
-              <option value="Mix 310 (Noxal)">Mix 310 (Noxal)</option>
-              <option value="Gas Carbónico">Gas Carbónico</option>
-              <option value="Nitrógeno">Nitrógeno</option>
-            </select>
-            <input type="number" id="cyl-qty" placeholder="Cantidad" min="1">
-            <input type="number" id="cyl-bajarot" placeholder="De baja rot." min="0">
-            <button class="btn btn-sm" onclick="addCylinder()">+ Agregar</button>
-          </div>
-        </div>
-      </div>
-
+  <div class="split-view" id="split-view">
+    <div class="split-left">
+      <div class="alpha-bar" id="alpha-bar"></div>
+      <div id="panel" class="client-list"></div>
     </div>
-    <div class="modal-actions">
-      <button class="btn btn-sm" onclick="closeDetalle()">Cerrar</button>
-      <div style="display:flex;gap:6px">
-        <button class="btn btn-sm" onclick="openRecordatorio()">💬 Recordatorio</button>
-        <button class="btn btn-sm btn-danger" onclick="confirmDelete()">🗑 Eliminar cliente</button>
+    <div class="split-right" id="split-right">
+      <div class="empty-state" id="detail-empty">
+        <div class="empty-icon" id="detail-empty-icon"></div>
+        <p>Seleccioná un cliente de la lista para ver su detalle.</p>
+      </div>
+
+      <div id="detail-content" style="display:none">
+        <button class="btn btn-sm back-to-list" onclick="closeDetalle()">← Volver a la lista</button>
+        <div class="modal-header">
+          <div>
+            <div class="modal-title" id="m-name"></div>
+            <div class="modal-subtitle" id="m-subtitle"></div>
+          </div>
+        </div>
+        <div class="modal-body">
+
+          <div class="urgent-banner" id="m-alert" style="display:none">
+            ⚠️ <span id="m-alert-text"></span>
+          </div>
+
+          <div class="info-grid">
+            <div class="info-cell">
+              <div class="info-label">Estado</div>
+              <div class="info-value" id="m-status"></div>
+            </div>
+            <div class="info-cell">
+              <div class="info-label">Pago hasta</div>
+              <div class="info-value" id="m-pay"></div>
+            </div>
+            <div class="info-cell">
+              <div class="info-label">Meses sin pagar</div>
+              <div class="info-value" id="m-months"></div>
+            </div>
+            <div class="info-cell">
+              <div class="info-label">Tubos baja rotación</div>
+              <div class="info-value" id="m-rot"></div>
+            </div>
+          </div>
+
+          <div>
+            <div class="section-title">✏️ Editar datos</div>
+            <div class="edit-row">
+              <input type="text" id="edit-nombre" placeholder="Nombre">
+              <input type="tel" id="edit-telefono" placeholder="Teléfono">
+              <input type="month" id="edit-pago">
+            </div>
+            <div class="edit-row">
+              <select id="edit-estado">
+                <option>Pendiente</option>
+                <option>Pagado</option>
+              </select>
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+              <button class="btn btn-sm btn-success" onclick="saveEdit()">💾 Guardar cambios</button>
+              <button class="btn btn-sm" onclick="marcarPagadoHoy()">✔ Pago hoy</button>
+            </div>
+          </div>
+
+          <div>
+            <div class="section-title">📝 Notas</div>
+            <textarea id="edit-notas" placeholder="Anotaciones sobre este cliente..." style="margin-top:8px"
+              oninput="saveNotas()"></textarea>
+          </div>
+
+          <div>
+            <div class="section-title">📋 Historial de pagos</div>
+            <div class="hist-list" id="m-hist"></div>
+            <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+              <input type="month" id="hist-mes" style="flex:1;min-width:120px">
+              <input type="text" id="hist-nota" placeholder="Nota (ej: pago parcial)" style="flex:2;min-width:130px">
+              <button class="btn btn-sm" onclick="addHistorial()">+ Agregar</button>
+            </div>
+          </div>
+
+          <div>
+            <div class="section-title">⬡ Cilindros de gas</div>
+            <div class="cyl-list" id="m-cyl"></div>
+            <div class="add-row">
+              <select id="cyl-gas">
+                <option value="Argón">Argón</option>
+                <option value="Acetileno">Acetileno</option>
+                <option value="Oxígeno">Oxígeno</option>
+                <option value="Mix 20 (Atal)">Mix 20 (Atal)</option>
+                <option value="Mix 310 (Noxal)">Mix 310 (Noxal)</option>
+                <option value="Gas Carbónico">Gas Carbónico</option>
+                <option value="Nitrógeno">Nitrógeno</option>
+              </select>
+              <input type="number" id="cyl-qty" placeholder="Cantidad" min="1">
+              <input type="number" id="cyl-bajarot" placeholder="De baja rot." min="0">
+              <button class="btn btn-sm" onclick="addCylinder()">+ Agregar</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-sm" onclick="openRecordatorio()">💬 Recordatorio</button>
+            <button class="btn btn-sm btn-danger" onclick="confirmDelete()">🗑 Eliminar cliente</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -373,6 +388,19 @@
             segundo mes sin pagar empieza a figurar como "por vencer".</p>
         </div>
         <div class="help-block">
+          <h4>Navegación</h4>
+          <ul>
+            <li>La lista de clientes está a la izquierda; al hacer clic en uno, su ficha completa se abre a la
+              derecha — no hace falta ir a otra pantalla.</li>
+            <li><b>Barra alfabética</b>: tocá una letra para ver solo los clientes que empiezan con esa letra.
+              "Todos" saca ese filtro. Las letras sin clientes aparecen apagadas.</li>
+            <li>Con un cliente seleccionado, podés usar las flechas ↑ / ↓ del teclado para pasar al anterior o
+              siguiente sin usar el mouse.</li>
+            <li><b>Más filtros</b>: oculta por defecto los filtros de fecha y tipo de gas para no saturar la
+              pantalla; tocá el botón para desplegarlos cuando los necesites.</li>
+          </ul>
+        </div>
+        <div class="help-block">
           <h4>Filtros</h4>
           <ul>
             <li><b>Buscar cliente</b>: filtra por nombre.</li>
@@ -415,6 +443,10 @@
 
   </div><!-- /#app -->
 
+  <script src="script.js"></script>
+</body>
+
+</html>
   <script src="script.js"></script>
 </body>
 
