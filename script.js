@@ -20,6 +20,15 @@ function ic(name, size=14){
 let clientes = [];
 let selected = null;
 let filtroActivo = "todos";
+let letraActiva = "";
+
+function toggleFiltros(){
+  const el = document.getElementById("advanced-filters");
+  const btn = document.getElementById("btn-mas-filtros");
+  const abierto = el.classList.contains("open");
+  el.classList.toggle("open", !abierto);
+  btn.classList.toggle("btn-primary", !abierto);
+}
 
 // ===== AUTENTICACIÓN =====
 async function login(){
@@ -57,6 +66,7 @@ async function logout(){
 function showApp(){
   document.getElementById("login-screen").style.display = "none";
   document.getElementById("app").style.display = "block";
+  document.getElementById("detail-empty-icon").innerHTML = ic("inbox",32);
   cargarDatos();
 }
 
@@ -143,6 +153,7 @@ function limpiarFiltros(){
   document.getElementById("filtro-gas").value="";
   document.getElementById("filtro-desde").value="";
   document.getElementById("filtro-hasta").value="";
+  letraActiva="";
   setFilter("todos");
 }
 
@@ -236,7 +247,10 @@ function openDetalle(i){
   const c = clientes[i];
   const d = mesesDesde(c.pagoHasta);
 
-  document.getElementById("overlay-detalle").style.display="flex";
+  document.getElementById("detail-empty").style.display="none";
+  document.getElementById("detail-content").style.display="block";
+  document.getElementById("split-view").classList.add("has-selection");
+
   document.getElementById("m-name").innerText = c.nombre;
   document.getElementById("m-subtitle").innerText =
     `${(c.cilindros||[]).length} tipo(s) de gas · ${totalTubos(c)} cilindros total`;
@@ -266,10 +280,21 @@ function openDetalle(i){
 
   renderCylinders();
   renderHistorial();
+  resaltarSeleccionado();
 }
 
 function closeDetalle(){
-  document.getElementById("overlay-detalle").style.display="none";
+  selected = null;
+  document.getElementById("detail-content").style.display="none";
+  document.getElementById("detail-empty").style.display="flex";
+  document.getElementById("split-view").classList.remove("has-selection");
+  resaltarSeleccionado();
+}
+
+function resaltarSeleccionado(){
+  document.querySelectorAll(".client-row").forEach(el=>{
+    el.classList.toggle("active", Number(el.dataset.idx)===selected);
+  });
 }
 
 // RECORDATORIO POR WHATSAPP
@@ -600,6 +625,24 @@ async function exportExcel(){
   a.click();
 }
 
+// BARRA ALFABÉTICA
+function setLetra(l){
+  letraActiva = l;
+  render();
+}
+
+function buildAlphaBar(base){
+  const disponibles = new Set(base.map(c=>(c.nombre||"").trim().charAt(0).toUpperCase()).filter(Boolean));
+  const letras = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+  let html = `<button class="alpha-btn alpha-all ${letraActiva===""?"active":""}" onclick="setLetra('')">Todos</button>`;
+  html += letras.map(l=>{
+    const disp = disponibles.has(l);
+    const activa = letraActiva===l;
+    return `<button class="alpha-btn ${activa?"active":""}" ${disp?`onclick="setLetra('${l}')"`:"disabled"}>${l}</button>`;
+  }).join("");
+  document.getElementById("alpha-bar").innerHTML = html;
+}
+
 // RENDER PRINCIPAL
 function render(){
   const panel=document.getElementById("panel");
@@ -626,7 +669,8 @@ function render(){
   document.getElementById("cnt-urgente").innerText=urg;
   document.getElementById("cnt-porvencer").innerText=porVencer;
 
-  let lista=clientes.map((c,i)=>({c,i})).filter(({c})=>{
+  // Filtros base (todo excepto la letra), usados también para saber qué letras mostrar habilitadas
+  let base=clientes.map((c,i)=>({c,i})).filter(({c})=>{
     if(q&&!c.nombre.toLowerCase().includes(q)) return false;
     const d=mesesDesde(c.pagoHasta);
     if(filtroActivo==="urgente"){
@@ -641,6 +685,12 @@ function render(){
     if(fHasta && (!c.pagoHasta || c.pagoHasta>fHasta)) return false;
     return true;
   });
+
+  buildAlphaBar(base.map(x=>x.c));
+
+  let lista = letraActiva
+    ? base.filter(({c})=>(c.nombre||"").trim().charAt(0).toUpperCase()===letraActiva)
+    : base;
 
   lista.sort((a,b)=>{
     if(sortBy==="nombre") return a.c.nombre.localeCompare(b.c.nombre);
@@ -659,8 +709,8 @@ function render(){
   if(!lista.length){
     panel.innerHTML=`
       <div class="empty-state">
-        <div class="empty-icon">${ic("inbox",32)}</div>
-        <p>${q||filtroActivo!=="todos"?"No hay clientes que coincidan con ese filtro.":"Agregá tu primer cliente con el botón de arriba."}</p>
+        <div class="empty-icon">${ic("inbox",28)}</div>
+        <p>${q||filtroActivo!=="todos"||letraActiva?"No hay clientes que coincidan con ese filtro.":"Agregá tu primer cliente con el botón de arriba."}</p>
       </div>`;
     return;
   }
@@ -668,44 +718,45 @@ function render(){
   panel.innerHTML=lista.map(({c,i})=>{
     const d=mesesDesde(c.pagoHasta);
     const urgente=d!==null&&d>=3;
-    const porVencer=d!==null&&d>=1&&d<=2;
-    const cls=urgente?"urgente":porVencer?"porvencer":"neutro";
+    const porVenc=d!==null&&d>=1&&d<=2;
+    const cls=urgente?"urgente":porVenc?"porvencer":"neutro";
     const dotCls=c.estado==="Pendiente"?"pendiente":"pagado";
-    const tot=totalTubos(c);
-    const rot=totalBajaRotacion(c);
-
-    let atrasoPill;
-    if(urgente) atrasoPill=`<span class="pill pill-solid-red">${ic("alert")} ${d} meses sin pagar</span>`;
-    else if(porVencer) atrasoPill=`<span class="pill pill-solid-orange">${ic("clock")} ${mesesTexto(d)}</span>`;
-    else atrasoPill=`<span class="pill pill-gray">${ic("clock")} ${mesesTexto(d)}</span>`;
 
     return `
-      <div class="card ${cls}">
-        <div style="flex:1;min-width:0">
-          <div class="card-top">
-            <span class="card-name">${c.nombre}</span>
-            <span class="status-badge"><span class="status-dot ${dotCls}"></span>${c.estado}</span>
-          </div>
-          <div class="card-pills">
-            ${atrasoPill}
-            ${tot>0?`<span class="pill pill-gray">${ic("package")} ${tot} cilindros</span>`:""}
-            ${rot>0?`<span class="pill pill-gray">${ic("package")} ${rot} baja rot.</span>`:""}
-            ${c.notas?`<span class="pill pill-gray" title="${c.notas.substring(0,80)}">${ic("note")} nota</span>`:""}
-          </div>
-        </div>
-        <div class="card-right">
-          <button class="btn btn-sm" onclick="openDetalle(${i})">Ver →</button>
-        </div>
+      <div class="client-row ${cls}" data-idx="${i}" onclick="openDetalle(${i})">
+        <span class="status-dot ${dotCls}"></span>
+        <span class="client-row-name">${c.nombre}</span>
+        <span class="client-row-meta">${mesesTexto(d)}</span>
       </div>
     `;
   }).join("");
+
+  resaltarSeleccionado();
 }
 
 // Cerrar con click fuera
-["overlay-detalle","overlay-add","overlay-recordatorio"].forEach(id=>{
+["overlay-add","overlay-recordatorio"].forEach(id=>{
   document.getElementById(id).addEventListener("click",function(e){
     if(e.target===this) this.style.display="none";
   });
+});
+
+// Navegación con flechas del teclado (solo si el foco no está en un input/select/textarea)
+document.addEventListener("keydown", e=>{
+  const tag = (document.activeElement.tagName||"").toLowerCase();
+  if(["input","textarea","select"].includes(tag)) return;
+  if(e.key!=="ArrowDown" && e.key!=="ArrowUp") return;
+  const rows = Array.from(document.querySelectorAll(".client-row"));
+  if(!rows.length) return;
+  let idx = rows.findIndex(r=>Number(r.dataset.idx)===selected);
+  if(idx===-1) idx = e.key==="ArrowDown" ? -1 : 0;
+  idx = e.key==="ArrowDown" ? Math.min(idx+1, rows.length-1) : Math.max(idx-1,0);
+  const target = rows[idx];
+  if(target){
+    e.preventDefault();
+    openDetalle(Number(target.dataset.idx));
+    target.scrollIntoView({block:"nearest"});
+  }
 });
 
 // INIT
