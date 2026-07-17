@@ -721,11 +721,14 @@ function render(){
     const porVenc=d!==null&&d>=1&&d<=2;
     const cls=urgente?"urgente":porVenc?"porvencer":"neutro";
     const dotCls=c.estado==="Pendiente"?"pendiente":"pagado";
+    const tot=totalTubos(c);
+    const rot=totalBajaRotacion(c);
 
     return `
       <div class="client-row ${cls}" data-idx="${i}" onclick="openDetalle(${i})">
         <span class="status-dot ${dotCls}"></span>
         <span class="client-row-name">${c.nombre}</span>
+        <span class="client-row-tubos" title="Cilindros totales${rot>0?' / de baja rotación':''}">${ic("package",11)} ${tot}${rot>0?` · ${rot} b.r.`:""}</span>
         <span class="client-row-meta">${mesesTexto(d)}</span>
       </div>
     `;
