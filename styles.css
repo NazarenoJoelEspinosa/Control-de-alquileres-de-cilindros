@@ -244,6 +244,8 @@ textarea{
 .status-dot.pendiente{background:var(--text3)}
 
 .client-row-name{flex:1;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.client-row-tubos{font-size:10px;color:var(--text3);display:inline-flex;align-items:center;gap:2px;flex-shrink:0}
+.client-row-tubos .ico{flex-shrink:0}
 .client-row-meta{font-size:11px;color:var(--text2);white-space:nowrap;flex-shrink:0}
 .client-row.urgente .client-row-meta{color:var(--red);font-weight:600}
 .client-row.porvencer .client-row-meta{color:var(--orange);font-weight:600}
